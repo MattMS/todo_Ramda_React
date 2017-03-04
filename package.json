@@ -1,0 +1,29 @@
+{
+  "author": "Matt McKellar-Spence",
+  "dependencies": {
+    "ramda": "^0.23.0",
+    "react": "^15.4.2",
+    "react-dom": "^15.4.2",
+    "uuid": "^3.0.1"
+  },
+  "description": "TodoMVC example using React and Ramda.",
+  "devDependencies": {
+    "browserify": "^14.1.0",
+    "http-server": "^0.9.0"
+  },
+  "keywords": [
+    "ramda",
+    "react",
+    "todo"
+  ],
+  "license": "MIT",
+  "main": "main.js",
+  "name": "todo_ramda_react",
+  "private": true,
+  "scripts": {
+    "make": "browserify index.js -o index.bundle.js",
+    "start": "http-server -p 1337",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "version": "0.1.0"
+}
