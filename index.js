@@ -58,7 +58,10 @@ function send (action) {
 //
 
 function delete_item (item_id) {
-	return R.identity
+	return R.over(
+		R.lensProp('items'),
+		R.converge(R.remove, [R.findIndex(R.propEq('id', item_id)), R.always(1), R.identity])
+	)
 }
 
 function edit_item_cancel (item_id) {
@@ -176,8 +179,6 @@ function render_list_item_view (item) {
 		className: 'destroy',
 		onClick: function (event) {
 			event.preventDefault()
-
-			console.log(item.id)
 
 			send(delete_item(item.id))
 		}
