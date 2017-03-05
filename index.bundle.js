@@ -55,22 +55,46 @@ function send (action) {
 
 
 //
+// Action helpers
+//
+
+function find_index_by_id (item_id) {
+	return R.findIndex(R.propEq('id', item_id))
+}
+
+function over_items (action) {
+	return R.over(R.lensProp('items'), action)
+}
+
+
+//
 // Actions
+//
+// These return functions that can be applied to the global state to perform a change.
 //
 
 function delete_item (item_id) {
-	return R.over(
-		R.lensProp('items'),
-		R.converge(R.remove, [R.findIndex(R.propEq('id', item_id)), R.always(1), R.identity])
-	)
+	return over_items(R.converge(R.remove, [
+		find_index_by_id(item_id),
+		R.always(1),
+		R.identity
+	]))
 }
 
 function edit_item_cancel (item_id) {
 	return R.assoc('editing', null)
 }
 
-function edit_item_done (item_id, label) {
-	return R.identity
+function edit_item_done (label, item_id) {
+	const adjust_label = R.adjust(R.assoc('label', label))
+
+	return R.pipe(
+		over_items(R.converge(adjust_label, [
+			find_index_by_id(item_id),
+			R.identity
+		])),
+		R.assoc('editing', null)
+	)
 }
 
 function edit_item_start (item_id) {
@@ -78,15 +102,20 @@ function edit_item_start (item_id) {
 }
 
 function new_item (label) {
-	return R.over(R.lensProp('items'), R.append({
+	return over_items(R.append({
 		done: false,
 		id: uuid.v1(),
 		label: label
 	}))
 }
 
-function set_item_done (item_id, done) {
-	return R.identity
+function set_item_completed (done, item_id) {
+	const adjust_done = R.adjust(R.assoc('done', done))
+
+	return over_items(R.converge(adjust_done, [
+		find_index_by_id(item_id),
+		R.identity
+	]))
 }
 
 
@@ -114,7 +143,7 @@ function render_edit_input (item) {
 		if ('' !== label) {
 			input_node.value = ''
 
-			send(edit_item_done(item.id, label))
+			send(edit_item_done(label, item.id))
 		}
 	}
 
@@ -171,7 +200,7 @@ function render_list_item_view (item) {
 		checked: item.done,
 		className: 'toggle',
 		onChange: function (event) {
-			send(set_item_done(item.id, !item.done))
+			send(set_item_completed(!item.done, item.id))
 		},
 		type: 'checkbox'
 	})
