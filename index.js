@@ -140,6 +140,39 @@ function render_new_input (state) {
 	})
 }
 
+function li_a (label, href, classes) {
+	return h('li', {}, [
+		h('a', {
+			className: classes,
+			href: href
+		}, [
+			label
+		])
+	])
+}
+
+function render_footer (state) {
+	return h('footer', {
+		className: 'footer'
+	}, [
+		// h('span', {
+		// 	className: 'todo-count'
+		// }, [
+		// 	h('strong', {
+		// 	}, [
+		// 	])
+		// ]),
+
+		h('ul', {
+			className: 'filters'
+		}, [
+			li_a('All', '#/', 'selected'),
+			li_a('Active', '#/active', ''),
+			li_a('Completed', '#/completed', '')
+		])
+	])
+}
+
 function render (state) {
 	return div(null, [
 		h('header', {
@@ -160,8 +193,7 @@ function render (state) {
 			render_list(state)
 		]),
 
-		// h('footer', {}, [
-		// ])
+		render_footer(state)
 	])
 }
 
