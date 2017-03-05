@@ -6,6 +6,8 @@ const uuid = require('uuid')
 
 const ENTER_KEY = 13
 
+const ESC_KEY = 27
+
 const SHOW_ACTIVE = 'active'
 
 const SHOW_ALL = 'all'
@@ -19,9 +21,8 @@ const h = R.curryN(3, function (tag, attributes, children) {
 
 const div = h('div')
 
-function input (attributes) {
-	return h('input', attributes, null)
-}
+const input = R.flip(h('input'))(null)
+
 
 function li_a (label, href, classes) {
 	return h('li', {}, [
@@ -51,12 +52,26 @@ function send (action) {
 	react_dom.render(render(global_state), document.getElementById('root'))
 }
 
-global_state.send = send
-
 
 //
 // Actions
 //
+
+function delete_item (item_id) {
+	return R.identity
+}
+
+function edit_item_cancel (item_id) {
+	return R.assoc('editing', null)
+}
+
+function edit_item_done (item_id, label) {
+	return R.identity
+}
+
+function edit_item_start (item_id) {
+	return R.assoc('editing', item_id)
+}
 
 function new_item (label) {
 	return R.over(R.lensProp('items'), R.append({
@@ -64,6 +79,10 @@ function new_item (label) {
 		id: uuid.v1(),
 		label: label
 	}))
+}
+
+function set_item_done (item_id, done) {
+	return R.identity
 }
 
 
@@ -74,11 +93,34 @@ function new_item (label) {
 function render_edit_input (item) {
 	let input_node = null
 
+	function onKeyDown (event) {
+		if (event.keyCode === ESC_KEY) {
+			send(edit_item_cancel(item.id))
+			return
+		}
+
+		if (event.keyCode !== ENTER_KEY) {
+			return
+		}
+
+		event.preventDefault()
+
+		const label = input_node.value.trim()
+
+		if ('' !== label) {
+			input_node.value = ''
+
+			send(edit_item_done(item.id, label))
+		}
+	}
+
 	return input({
 		className: 'edit',
 		// onChange:
-		// onBlur:
-		// onKeyDown:
+		onBlur: function (event) {
+			send(edit_item_cancel(item.id))
+		},
+		onKeyDown: onKeyDown,
 		ref: function (node) {
 			input_node = node
 		},
@@ -97,12 +139,11 @@ function render_new_input (state) {
 		event.preventDefault()
 
 		const label = input_node.value.trim()
-		console.log(label)
 
-		if ('' != label) {
+		if ('' !== label) {
 			input_node.value = ''
 
-			state.send(new_item(label))
+			send(new_item(label))
 		}
 	}
 
@@ -125,17 +166,29 @@ function render_list_item_view (item) {
 	const checkbox = input({
 		checked: item.done,
 		className: 'toggle',
-		// onChange:
-		type: 'checkbox',
+		onChange: function (event) {
+			send(set_item_done(item.id, !item.done))
+		},
+		type: 'checkbox'
 	})
 
 	const delete_button = h('button', {
-		className: 'destroy'
-		// onClick:
+		className: 'destroy',
+		onClick: function (event) {
+			event.preventDefault()
+
+			console.log(item.id)
+
+			send(delete_item(item.id))
+		}
 	}, null)
 
 	const label = h('label', {
-		// onDoubleClick:
+		onDoubleClick: function (event) {
+			event.preventDefault()
+
+			send(edit_item_start(item.id))
+		}
 	}, item.label)
 
 	return div({
