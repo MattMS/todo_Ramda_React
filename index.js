@@ -23,6 +23,21 @@ function input (attributes) {
 	return h('input', attributes, null)
 }
 
+function li_a (label, href, classes) {
+	return h('li', {}, [
+		h('a', {
+			className: classes,
+			href: href
+		}, [
+			label
+		])
+	])
+}
+
+
+//
+// State
+//
 
 let global_state = {
 	filter: null,
@@ -39,12 +54,97 @@ function send (action) {
 global_state.send = send
 
 
+//
+// Actions
+//
+
 function new_item (label) {
 	return R.over(R.lensProp('items'), R.append({
 		done: false,
 		id: uuid.v1(),
 		label: label
 	}))
+}
+
+
+//
+// Text inputs
+//
+
+function render_edit_input (item) {
+	let input_node = null
+
+	return input({
+		className: 'edit',
+		// onChange:
+		// onBlur:
+		// onKeyDown:
+		ref: function (node) {
+			input_node = node
+		},
+		value: item.label
+	})
+}
+
+function render_new_input (state) {
+	let input_node = null
+
+	function onKeyDown (event) {
+		if (event.keyCode !== ENTER_KEY) {
+			return
+		}
+
+		event.preventDefault()
+
+		const label = input_node.value.trim()
+		console.log(label)
+
+		if ('' != label) {
+			input_node.value = ''
+
+			state.send(new_item(label))
+		}
+	}
+
+	return input({
+		className: 'new-todo',
+		onKeyDown: onKeyDown,
+		placeholder: 'What needs to be done?',
+		ref: function (node) {
+			input_node = node
+		}
+	})
+}
+
+
+//
+// List
+//
+
+function render_list_item_view (item) {
+	const checkbox = input({
+		checked: item.done,
+		className: 'toggle',
+		// onChange:
+		type: 'checkbox',
+	})
+
+	const delete_button = h('button', {
+		className: 'destroy'
+		// onClick:
+	}, null)
+
+	const label = h('label', {
+		// onDoubleClick:
+	}, item.label)
+
+	return div({
+		className: 'view'
+	}, [
+		checkbox,
+		label,
+		delete_button
+	])
 }
 
 function render_list_item (state) {
@@ -59,47 +159,11 @@ function render_list_item (state) {
 	)
 
 	return function (item) {
-		let input_node = null
-
-		const checkbox = input({
-			checked: item.done,
-			className: 'toggle',
-			// onChange:
-			type: 'checkbox',
-		})
-
-		const delete_button = h('button', {
-			className: 'destroy'
-			// onClick:
-		}, null)
-
-		const edit_input = input({
-			className: 'edit',
-			// onChange:
-			// onBlur:
-			// onKeyDown:
-			ref: function (node) {
-				input_node = node
-			},
-			value: item.label
-		})
-
-		const label = h('label', {
-			// onDoubleClick:
-		}, item.label)
-
 		return h('li', {
 			className: get_classes(item)
 		}, [
-			div({
-				className: 'view'
-			}, [
-				checkbox,
-				label,
-				delete_button
-			]),
-
-			edit_input
+			render_list_item_view(item),
+			render_edit_input(item)
 		])
 	}
 }
@@ -110,58 +174,21 @@ function render_list (state) {
 	}, R.map(render_list_item(state), state.items))
 }
 
-function render_new_input (state) {
-	let new_item_input = null
 
-	function onKeyDown (event) {
-		if (event.keyCode !== ENTER_KEY) {
-			return
-		}
-
-		event.preventDefault()
-
-		const label = new_item_input.value.trim()
-		console.log(label)
-
-		if ('' != label) {
-			new_item_input.value = ''
-
-			state.send(new_item(label))
-		}
-	}
-
-	return input({
-		className: 'new-todo',
-		onKeyDown: onKeyDown,
-		placeholder: 'What needs to be done?',
-		ref: function (node) {
-			new_item_input = node
-		}
-	})
-}
-
-function li_a (label, href, classes) {
-	return h('li', {}, [
-		h('a', {
-			className: classes,
-			href: href
-		}, [
-			label
-		])
-	])
-}
+//
+// Main layout
+//
 
 function render_footer (state) {
 	return h('footer', {
 		className: 'footer'
 	}, [
-		// h('span', {
-		// 	className: 'todo-count'
-		// }, [
-		// 	h('strong', {
-		// 	}, [
-		// 	])
-		// ]),
+		h('span', {
+			className: 'todo-count'
+		}, [
+			h('strong', {}, state.items.length),
+			' left'
+		]),
 
 		h('ul', {
 			className: 'filters'
@@ -173,14 +200,18 @@ function render_footer (state) {
 	])
 }
 
+function render_header (state) {
+	return h('header', {
+		className: 'header'
+	}, [
+		h('h1', {}, 'todos'),
+		render_new_input(state)
+	])
+}
+
 function render (state) {
 	return div(null, [
-		h('header', {
-			className: 'header'
-		}, [
-			h('h1', {}, 'todos'),
-			render_new_input(state)
-		]),
+		render_header(state),
 
 		h('section', {
 			className: 'main'
@@ -198,6 +229,8 @@ function render (state) {
 }
 
 
-react_dom.render(render(global_state), document.getElementById('root'))
+//
+// First render
+//
 
-// https://github.com/tastejs/todomvc/blob/gh-pages/examples/react/js/app.jsx
+react_dom.render(render(global_state), document.getElementById('root'))
