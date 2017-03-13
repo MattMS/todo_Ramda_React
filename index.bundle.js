@@ -16,12 +16,17 @@ const SHOW_ALL = 'all'
 const SHOW_DONE = 'completed'
 
 
+//
+// Common DOM structures
+//
+
 const h = R.curryN(3, function (tag, attributes, children) {
 	return R.apply(react.createElement, [tag, attributes].concat(children))
 })
 
 const div = h('div')
 
+// Using `flip` allows us to exclude children from `input` tags, so it only requires attributes.
 const input = R.flip(h('input'))(null)
 
 
@@ -43,7 +48,7 @@ function li_a (label, href, classes) {
 
 let global_state = {
 	filter: null,
-	items: []
+	items: {}
 }
 
 function send (action) {
@@ -55,16 +60,35 @@ function send (action) {
 
 
 //
-// Action helpers
+// Helper functions
 //
 
-function find_index_by_id (item_id) {
-	return R.findIndex(R.propEq('id', item_id))
-}
+const get_item_count = R.pipe(R.prop('items'), R.keys, R.length)
 
-function over_items (action) {
-	return R.over(R.lensProp('items'), action)
-}
+const get_item_path = R.flip(R.append)(['items'])
+
+// Merges a 2-item Array into an Object with the first item as the `id` value.
+const merge_as_id = R.pipe(
+	R.adjust(R.objOf('id'), 0),
+	R.apply(R.merge)
+)
+
+const pick_by_true_values = R.pickBy(R.nthArg(0))
+
+const sort_by_creation_time = R.sortBy(R.prop('added'))
+
+const sort_by_first_item = R.sortBy(R.prop(0))
+
+
+// Composed helped functions
+
+const get_classes_text = R.pipe(
+	pick_by_true_values,
+	R.keys(),
+	R.join(' ')
+)
+
+const get_sorted_items = R.pipe(R.toPairs, sort_by_creation_time, R.map(merge_as_id))
 
 
 //
@@ -73,49 +97,32 @@ function over_items (action) {
 // These return functions that can be applied to the global state to perform a change.
 //
 
-function delete_item (item_id) {
-	return over_items(R.converge(R.remove, [
-		find_index_by_id(item_id),
-		R.always(1),
-		R.identity
-	]))
-}
+// Expects the item ID to remove and then the State object.
+const delete_item = R.pipe(get_item_path, R.dissocPath)
 
-function edit_item_cancel (item_id) {
-	return R.assoc('editing', null)
-}
+const edit_item_cancel = R.assoc('editing', null)
 
-function edit_item_done (label, item_id) {
-	const adjust_label = R.adjust(R.assoc('label', label))
-
+function edit_item_done (item_id, label) {
 	return R.pipe(
-		over_items(R.converge(adjust_label, [
-			find_index_by_id(item_id),
-			R.identity
-		])),
-		R.assoc('editing', null)
+		R.assoc('editing', null),
+		R.assocPath(['items', item_id, 'label'], label)
 	)
 }
 
-function edit_item_start (item_id) {
-	return R.assoc('editing', item_id)
-}
+// Expects the item ID to start editing and then the State object.
+const edit_item_start = R.assoc('editing')
 
+// NOTE: Ideally the generated keys would be sequential.
 function new_item (label) {
-	return over_items(R.append({
+	return R.assocPath(['items', uuid.v1()], {
+		added: performance.now(),
 		done: false,
-		id: uuid.v1(),
 		label: label
-	}))
+	})
 }
 
-function set_item_completed (done, item_id) {
-	const adjust_done = R.adjust(R.assoc('done', done))
-
-	return over_items(R.converge(adjust_done, [
-		find_index_by_id(item_id),
-		R.identity
-	]))
+function set_item_done_state (item_id, done) {
+	return R.assocPath(['items', item_id, 'done'], done)
 }
 
 
@@ -128,7 +135,7 @@ function render_edit_input (item) {
 
 	function onKeyDown (event) {
 		if (event.keyCode === ESC_KEY) {
-			send(edit_item_cancel(item.id))
+			send(edit_item_cancel)
 			return
 		}
 
@@ -143,21 +150,22 @@ function render_edit_input (item) {
 		if ('' !== label) {
 			input_node.value = ''
 
-			send(edit_item_done(label, item.id))
+			send(edit_item_done(item.id, label))
 		}
 	}
 
 	return input({
+		// autoFocus: true,
 		className: 'edit',
+		defaultValue: item.label,
 		// onChange:
 		onBlur: function (event) {
-			send(edit_item_cancel(item.id))
+			send(edit_item_cancel)
 		},
 		onKeyDown: onKeyDown,
 		ref: function (node) {
 			input_node = node
-		},
-		value: item.label
+		}
 	})
 }
 
@@ -181,6 +189,7 @@ function render_new_input (state) {
 	}
 
 	return input({
+		// autoFocus: true,
 		className: 'new-todo',
 		onKeyDown: onKeyDown,
 		placeholder: 'What needs to be done?',
@@ -200,7 +209,7 @@ function render_list_item_view (item) {
 		checked: item.done,
 		className: 'toggle',
 		onChange: function (event) {
-			send(set_item_completed(!item.done, item.id))
+			send(set_item_done_state(item.id, R.not(item.done)))
 		},
 		type: 'checkbox'
 	})
@@ -232,30 +241,29 @@ function render_list_item_view (item) {
 }
 
 function render_list_item (state) {
-	const get_classes = R.pipe(
-		R.applySpec({
+	return function (item) {
+		const classes_text = get_classes_text(R.applySpec({
 			completed: R.prop('done'),
 			editing: R.pipe(R.prop('id'), R.equals(state.editing))
-		}),
-		R.pickBy(R.nthArg(0)),
-		R.keys(),
-		R.join(' ')
-	)
+		}, item))
 
-	return function (item) {
+		const children = R.juxt([
+			render_list_item_view,
+			render_edit_input
+		])(item)
+
 		return h('li', {
-			className: get_classes(item)
-		}, [
-			render_list_item_view(item),
-			render_edit_input(item)
-		])
+			className: classes_text
+		}, children)
 	}
 }
 
 function render_list (state) {
+	const items = get_sorted_items(state.items)
+
 	return h('ul', {
 		className: 'todo-list'
-	}, R.map(render_list_item(state), state.items))
+	}, R.map(render_list_item(state), items))
 }
 
 
@@ -270,7 +278,7 @@ function render_footer (state) {
 		h('span', {
 			className: 'todo-count'
 		}, [
-			h('strong', {}, state.items.length),
+			h('strong', {}, get_item_count(state)),
 			' left'
 		]),
 
