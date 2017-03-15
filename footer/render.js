@@ -4,6 +4,13 @@ const h = require('../h')
 const render_new_input = require('../new_item/render')
 
 
+const SHOW_ACTIVE = 'active'
+
+const SHOW_ALL = 'all'
+
+const SHOW_DONE = 'completed'
+
+
 const get_item_count = R.pipe(R.prop('items'), R.keys, R.length)
 
 

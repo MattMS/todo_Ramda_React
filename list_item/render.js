@@ -2,25 +2,30 @@ const R = require('ramda')
 
 const h = require('../h')
 const input = require('../text_input_component/render')
+const render_edit_input = require('../edit_item/render')
 
 const {delete_item, edit_item_cancel, edit_item_done, edit_item_start, set_item_done_state} = require('./actions')
 
 
-const render_edit_input = R.curry(function (send, item) {
-	const on_change = R.pipe(edit_item_done(item.id), send)
+//
+// Helper functions
+//
 
-	return input(on_change, {
-		// autoFocus: true,
-		className: 'edit',
-		defaultValue: item.label,
-		// onChange:
-		onBlur: function (event) {
-			send(edit_item_cancel)
-		},
-		placeholder: 'What needs to be done?'
-	})
-})
+const pick_by_true_values = R.pickBy(R.nthArg(0))
 
+
+// Composed helped functions
+
+const get_classes_text = R.pipe(
+	pick_by_true_values,
+	R.keys(),
+	R.join(' ')
+)
+
+
+//
+// Container for done checkbox, label, and delete button
+//
 
 const render_list_item_view = R.curry(function (send, item) {
 	const checkbox = h('input', {
@@ -58,6 +63,10 @@ const render_list_item_view = R.curry(function (send, item) {
 	])
 })
 
+
+//
+// Exports
+//
 
 module.exports = R.curry(function (send, state) {
 	return function (item) {

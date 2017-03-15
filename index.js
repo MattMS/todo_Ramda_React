@@ -1,6 +1,6 @@
 const react_dom = require('react-dom')
 
-const render = require('./render')
+const render = require('./app/render')
 
 
 //
