@@ -225,12 +225,20 @@ const get_sorted_items = R.pipe(R.toPairs, sort_by_creation_time, R.map(merge_as
 // Exports
 //
 
+/*
+R.converge(R.map, [
+	render_list_item,
+	R.pipe(R.nthArg(1), R.prop('items'), get_sorted_items)
+])
+*/
 module.exports = R.curry(function (send, state) {
 	const items = get_sorted_items(state.items)
 
+	const make_li = render_list_item(send, state)
+
 	return h('ul', {
 		className: 'todo-list'
-	}, R.map(render_list_item(send, state), items))
+	}, R.map(make_li, items))
 })
 
 },{"../h":5,"../list_item/render":9,"ramda":37}],8:[function(require,module,exports){
@@ -317,7 +325,7 @@ const render_list_item_view = R.curry(function (send, item) {
 		}
 	}, item.label)
 
-	return div({
+	return h('div', {
 		className: 'view'
 	}, [
 		checkbox,
@@ -331,22 +339,20 @@ const render_list_item_view = R.curry(function (send, item) {
 // Exports
 //
 
-module.exports = R.curry(function (send, state) {
-	return function (item) {
-		const classes_text = get_classes_text(R.applySpec({
-			completed: R.prop('done'),
-			editing: R.pipe(R.prop('id'), R.equals(state.editing))
-		}, item))
+module.exports = R.curry(function (send, state, item) {
+	const classes_text = get_classes_text(R.applySpec({
+		completed: R.prop('done'),
+		editing: R.pipe(R.prop('id'), R.equals(state.editing))
+	}, item))
 
-		const children = R.juxt([
-			render_list_item_view(send),
-			render_edit_input(send, item)
-		])(item)
+	const children = R.juxt([
+		render_list_item_view(send),
+		render_edit_input(send)
+	])(item)
 
-		return h('li', {
-			className: classes_text
-		}, children)
-	}
+	return h('li', {
+		className: classes_text
+	}, children)
 })
 
 },{"../edit_item/render":3,"../h":5,"../text_input_component/render":503,"./actions":8,"ramda":37}],10:[function(require,module,exports){

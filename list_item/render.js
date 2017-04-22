@@ -54,7 +54,7 @@ const render_list_item_view = R.curry(function (send, item) {
 		}
 	}, item.label)
 
-	return div({
+	return h('div', {
 		className: 'view'
 	}, [
 		checkbox,
@@ -68,20 +68,18 @@ const render_list_item_view = R.curry(function (send, item) {
 // Exports
 //
 
-module.exports = R.curry(function (send, state) {
-	return function (item) {
-		const classes_text = get_classes_text(R.applySpec({
-			completed: R.prop('done'),
-			editing: R.pipe(R.prop('id'), R.equals(state.editing))
-		}, item))
+module.exports = R.curry(function (send, state, item) {
+	const classes_text = get_classes_text(R.applySpec({
+		completed: R.prop('done'),
+		editing: R.pipe(R.prop('id'), R.equals(state.editing))
+	}, item))
 
-		const children = R.juxt([
-			render_list_item_view(send),
-			render_edit_input(send, item)
-		])(item)
+	const children = R.juxt([
+		render_list_item_view(send),
+		render_edit_input(send)
+	])(item)
 
-		return h('li', {
-			className: classes_text
-		}, children)
-	}
+	return h('li', {
+		className: classes_text
+	}, children)
 })

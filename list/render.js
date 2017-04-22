@@ -28,10 +28,18 @@ const get_sorted_items = R.pipe(R.toPairs, sort_by_creation_time, R.map(merge_as
 // Exports
 //
 
+/*
+R.converge(R.map, [
+	render_list_item,
+	R.pipe(R.nthArg(1), R.prop('items'), get_sorted_items)
+])
+*/
 module.exports = R.curry(function (send, state) {
 	const items = get_sorted_items(state.items)
 
+	const make_li = render_list_item(send, state)
+
 	return h('ul', {
 		className: 'todo-list'
-	}, R.map(render_list_item(send, state), items))
+	}, R.map(make_li, items))
 })
